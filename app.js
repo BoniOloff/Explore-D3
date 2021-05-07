@@ -1,37 +1,60 @@
-const canvas = d3.select(".canva");
-canvas.attr("width", "600")
-    .attr("height", "600");
+let width = 600;
+let height = 600;
 
-// var dataArray = [4, 15, 34, 12];
-
-// var dataArray = [
-//     {width: 25, height: 4, fill: "pink"},
-//     {width: 25, height: 14, fill: "purple"},
-//     {width: 25, height: 44, fill: "orange"},
-//     {width: 25, height: 124, fill: "green"},
-//     {width: 25, height: 12, fill: "grey"},
-//     {width: 25, height: 34, fill: "red"}
-// ]
-
-const svg = canvas.append("svg")
-            .attr("width", "1000")
-            .attr("height", "1000");
-
-const rect = svg.selectAll("rect");
+let svg = d3.select("svg");
+svg.attr('width', width);
+svg.attr('height', height);
 
 
-var dataArray = d3.json("data.json")
-                  .then(data => {
+d3.csv("data.csv").then(data => {
+    // convert the data type
+    data.forEach(d => {
+        d.population = +d.population;
+    });
     
-    rect.data(data)
-        .enter().append("rect")
-        .attr("width", "49")
-        .attr("fill", d => d.fill)
-        .attr("height", function(d){
-            return d.height * 2;
-        })
-        .attr("x", (d, i) => i * 50)
-        .attr("y", (d, i) => {
-            return 700 - (d.height * 2);
-        });
+    // Function that return values
+    const xValue = d => d.population;
+    const yValue = d => d.country;
+    const margin = { top: 20, right: 40, bottom:20, left:100}
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.bottom - margin.top;
+
+    // Create x scale
+    const xScale = d3.scaleLinear()
+        .domain([0, d3.max(data, xValue)])
+        .range([0, innerWidth]);
+
+    // Create yscale
+    const yScale = d3.scaleBand()
+        .domain(data.map(yValue))
+        .range([0, innerHeight])
+        .padding(0.1);
+    
+    // Create a grouping
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    // Create custom format for x axis
+    const xAxisTickFormat = number =>
+        d3.format('.3s')(number)
+            .replace('G', 'B');
+    
+    // Put the axis
+    g.append('g').call(d3.axisLeft(yScale))
+        .selectAll('.domain, .tick line')
+        .remove();
+
+    g.append('g').call(d3.axisBottom(xScale).tickFormat(xAxisTickFormat))
+        .attr('transform', `translate(0,${innerHeight})`)
+        .selectAll('.domain')
+        .remove();
+
+    // combine everything above
+    // create rectangle by creating new elements
+    g.selectAll('rect').data(data)
+        .enter().append('rect')
+            .attr('y', d => yScale(yValue(d)))
+            .attr('width', d => xScale(xValue(d)))
+            .attr('height', yScale.bandwidth());
+
 })
